@@ -60,6 +60,33 @@ export default function DocumentChat({
     shape: { borderRadius: 12 },
   });
 
+  // Animation variants for smooth staggered entrance
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.1,
+      },
+    },
+  };
+
+  const headerVariants = {
+    hidden: { opacity: 0, y: -20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+  };
+
+  const messagesVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6, delay: 0.15 } },
+  };
+
+  const inputVariants = {
+    hidden: { opacity: 0, y: 16 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.25 } },
+  };
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -76,7 +103,6 @@ export default function DocumentChat({
     };
   }, [isAnimating]);
 
-  // CORRECT LOGIC (with userId)
   async function queryDocument(sessionId: string, query: string) {
     const user = JSON.parse(localStorage.getItem("user") || "null");
     const userId = user?._id;
@@ -110,7 +136,6 @@ export default function DocumentChat({
 
     try {
       const data = await queryDocument(sessionId, userMessage);
-
       setMessages((p) => [...p, { role: "assistant", content: data.answer }]);
     } catch {
       setMessages((p) => [
@@ -127,6 +152,7 @@ export default function DocumentChat({
     setCopied(i);
     setTimeout(() => setCopied(null), 1500);
   };
+
   const promptMap: Record<string, string> = {
     Summarize: "Provide a concise and clear summary of this document.",
     "Key points":
@@ -134,26 +160,30 @@ export default function DocumentChat({
     Dates:
       "Extract all important dates mentioned in this document along with their context or events.",
   };
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
 
+      {/* Main container orchestrates staggered child animations */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
         onAnimationComplete={() => setIsAnimating(false)}
       >
-        <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-          {/* HEADER */}
-          <Box
-            sx={{
-              px: 3,
-              py: 2,
-              display: "flex",
-              justifyContent: "space-between",
-            }}
-          >
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            height: "100vh",
+            justifyContent: "space-between",
+            overflowY: "auto",
+            scrollbarGutter: "stable overlay",
+          }}
+        >
+          {/* HEADER - Animates first */}
+          <motion.div variants={headerVariants}>
             <Box
               sx={{
                 px: 3,
@@ -177,6 +207,7 @@ export default function DocumentChat({
                   <ArrowBackIcon />
                 </IconButton>
               </Box>
+
               <Typography
                 fontWeight="bold"
                 sx={{
@@ -187,138 +218,179 @@ export default function DocumentChat({
               >
                 DocuChat
               </Typography>
-            </Box>
 
-            <IconButton
-              disableRipple
-              onClick={() => setMode(mode === "dark" ? "light" : "dark")}
-              sx={{
-                p: 1,
-                background: "transparent",
-                "&:hover": { background: "transparent" },
-              }}
-            >
-              {isDark ? <LightMode /> : <DarkMode />}
-            </IconButton>
-          </Box>
+              <IconButton
+                disableRipple
+                onClick={() => setMode(mode === "dark" ? "light" : "dark")}
+                sx={{
+                  p: 1,
+                  background: "transparent",
+                  "&:hover": { background: "transparent" },
+                }}
+              >
+                {isDark ? <LightMode /> : <DarkMode />}
+              </IconButton>
+            </Box>
 
           {/* MESSAGES */}
           <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
-            <Container maxWidth="md">
-              {messages.length === 0 ? (
-                <Box textAlign="center" mt={10}>
-                  <Typography variant="h5">
-                    Ask anything about your document
-                  </Typography>
+              <Container maxWidth="md">
+                {messages.length === 0 ? (
+                  <Box textAlign="center" mt={10}>
+                    <Typography variant="h5">
+                      Ask anything about your document
+                    </Typography>
 
-                  <Box
-                    mt={3}
-                    display="flex"
-                    gap={1}
-                    flexWrap="wrap"
-                    justifyContent="center"
-                  >
-                    {Object.keys(promptMap).map((label) => (
-                      <Chip
-                        key={label}
-                        label={label}
-                        onClick={() => setInput(promptMap[label])}
-                      />
-                    ))}
-                  </Box>
-                </Box>
-              ) : (
-                <AnimatePresence>
-                  {messages.map((msg, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
+                    <Box
+                      mt={3}
+                      display="flex"
+                      gap={1}
+                      flexWrap="wrap"
+                      justifyContent="center"
                     >
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent:
-                            msg.role === "user" ? "flex-end" : "flex-start",
-                          mb: 2,
+                      {Object.keys(promptMap).map((label, i) => (
+                        <motion.div
+                          key={label}
+                          initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          transition={{ delay: 0.4 + i * 0.1 }}
+                        >
+                          <Chip
+                            label={label}
+                            onClick={() => setInput(promptMap[label])}
+                          />
+                        </motion.div>
+                      ))}
+                    </Box>
+                  </Box>
+                ) : (
+                  <AnimatePresence>
+                    {messages.map((msg, i) => (
+                      <motion.div
+                        key={`${msg.role}-${i}`} // Stable key prevents glitches
+                        initial={{
+                          opacity: 0,
+                          x: msg.role === "user" ? 20 : -20,
                         }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: msg.role === "user" ? 20 : -20 }}
+                        transition={{ duration: 0.3 }}
                       >
-                        <Box sx={{ maxWidth: "75%", position: "relative" }}>
-                          <Paper sx={{ p: 2 }}>
-                            <Typography>{msg.content}</Typography>
-                          </Paper>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent:
+                              msg.role === "user" ? "flex-end" : "flex-start",
+                            mb: 2,
+                          }}
+                        >
+                          <Box sx={{ maxWidth: "75%", position: "relative" }}>
+                            <Paper sx={{ p: 2 }}>
+                              <Typography>{msg.content}</Typography>
+                            </Paper>
 
-                          {msg.role === "assistant" && (
-                            <IconButton
-                              size="small"
-                              onClick={() => copy(msg.content, i)}
-                              sx={{ position: "absolute", right: -36, top: 4 }}
-                            >
-                              <ContentCopy fontSize="small" />
-                            </IconButton>
-                          )}
+                            {msg.role === "assistant" && (
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ delay: 0.2 }}
+                              >
+                                <IconButton
+                                  size="small"
+                                  onClick={() => copy(msg.content, i)}
+                                  sx={{
+                                    position: "absolute",
+                                    right: -36,
+                                    top: 4,
+                                  }}
+                                >
+                                  <ContentCopy fontSize="small" />
+                                </IconButton>
+                              </motion.div>
+                            )}
 
-                          {copied === i && (
-                            <Typography fontSize={12}>Copied!</Typography>
-                          )}
+                            {copied === i && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                              >
+                                <Typography fontSize={12}>Copied!</Typography>
+                              </motion.div>
+                            )}
+                          </Box>
                         </Box>
-                      </Box>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              )}
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                )}
 
-              {loading && <Typography>Thinking...</Typography>}
+                {loading && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <Typography>Thinking...</Typography>
+                  </motion.div>
+                )}
 
-              <div ref={messagesEndRef} />
-            </Container>
-          </Box>
+                <div ref={messagesEndRef} />
+              </Container>
+            </Box>
+          </motion.div>
 
-          {/* INPUT */}
-          <Box sx={{ p: 2 }}>
-            <Container maxWidth="md">
-              {file && (
-                <Chip
-                  label={file.name}
-                  onDelete={() => setFile(null)}
-                  deleteIcon={<Close />}
-                  icon={<AttachFile />}
-                  sx={{ mb: 1 }}
-                />
-              )}
+          {/* INPUT - Animates last */}
+          <motion.div variants={inputVariants}>
+            <Box sx={{ p: 2 }}>
+              <Container maxWidth="md">
+                {file && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <Chip
+                      label={file.name}
+                      onDelete={() => setFile(null)}
+                      deleteIcon={<Close />}
+                      icon={<AttachFile />}
+                      sx={{ mb: 1 }}
+                    />
+                  </motion.div>
+                )}
 
-              <Box sx={{ display: "flex", gap: 1 }}>
-                <input
-                  type="file"
-                  hidden
-                  id="file-upload"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
-                />
+                <Box sx={{ display: "flex", gap: 1 }}>
+                  <input
+                    type="file"
+                    hidden
+                    id="file-upload"
+                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  />
 
-                {/* <label htmlFor="file-upload">
-                  <IconButton component="span">
-                    <AttachFile />
+                  <TextField
+                    fullWidth
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleSend();
+                      }
+                    }}
+                    disabled={loading}
+                  />
+
+                  <IconButton
+                    onClick={handleSend}
+                    disabled={loading || !input.trim()}
+                  >
+                    <Send />
                   </IconButton>
-                </label> */}
-
-                <TextField
-                  fullWidth
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleSend();
-                    }
-                  }}
-                />
-
-                <IconButton onClick={handleSend}>
-                  <Send />
-                </IconButton>
-              </Box>
-            </Container>
-          </Box>
+                </Box>
+              </Container>
+            </Box>
+          </motion.div>
         </Box>
       </motion.div>
     </ThemeProvider>
