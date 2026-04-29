@@ -6,45 +6,78 @@ import {
   Typography,
   Paper,
   Container,
-  Chip,
   ThemeProvider,
   createTheme,
   CssBaseline,
+  Chip,
 } from "@mui/material";
 import {
   Send,
-  Brightness4,
-  Brightness7,
+  LightMode,
+  DarkMode,
+  ContentCopy,
   AttachFile,
   Close,
 } from "@mui/icons-material";
+import { motion, AnimatePresence } from "framer-motion";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
-export default function DocumentChat({ sessionId }: { sessionId: string }) {
+export default function DocumentChat({
+  sessionId,
+  setShowChat,
+  setSessionId,
+}: {
+  sessionId: string;
+  setShowChat: (v: boolean) => void;
+  setSessionId: (v: string | null) => void;
+}) {
   const [mode, setMode] = useState<"light" | "dark">("dark");
   const [messages, setMessages] = useState<
     Array<{ role: "user" | "assistant"; content: string }>
   >([]);
   const [input, setInput] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState<number | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [isAnimating, setIsAnimating] = useState(true);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isDark = mode === "dark";
 
   const theme = createTheme({
     palette: {
       mode,
-      ...(mode === "dark" && {
-        background: { default: "#1a1f2e", paper: "#252b3b" },
-        text: { primary: "#f1f5f9", secondary: "#94a3b8" },
-      }),
+      ...(isDark
+        ? {
+            background: { default: "#0a0f1e", paper: "#0f1829" },
+            text: { primary: "#f1f5f9", secondary: "#94a3b8" },
+          }
+        : {
+            background: { default: "#f9fafb", paper: "#ffffff" },
+            text: { primary: "#111", secondary: "#555" },
+          }),
     },
+    shape: { borderRadius: 12 },
   });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (isAnimating) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [isAnimating]);
+
+  // CORRECT LOGIC (with userId)
   async function queryDocument(sessionId: string, query: string) {
-    // Get userId from localStorage
     const user = JSON.parse(localStorage.getItem("user") || "null");
     const userId = user?._id;
 
@@ -54,9 +87,7 @@ export default function DocumentChat({ sessionId }: { sessionId: string }) {
 
     const res = await fetch(`http://localhost:5000/jobs/query/${sessionId}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query, userId }),
     });
 
@@ -73,158 +104,223 @@ export default function DocumentChat({ sessionId }: { sessionId: string }) {
 
     const userMessage = input;
 
-    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
+    setMessages((p) => [...p, { role: "user", content: userMessage }]);
     setInput("");
     setLoading(true);
 
     try {
       const data = await queryDocument(sessionId, userMessage);
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: data.answer,
-        },
-      ]);
-    } catch (err) {
-      console.error(err);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "Error fetching answer",
-        },
+      setMessages((p) => [...p, { role: "assistant", content: data.answer }]);
+    } catch {
+      setMessages((p) => [
+        ...p,
+        { role: "assistant", content: "Error fetching answer" },
       ]);
     } finally {
       setLoading(false);
     }
   };
 
+  const copy = (text: string, i: number) => {
+    navigator.clipboard.writeText(text);
+    setCopied(i);
+    setTimeout(() => setCopied(null), 1500);
+  };
+  const promptMap: Record<string, string> = {
+    Summarize: "Provide a concise and clear summary of this document.",
+    "Key points":
+      "List the key points and important insights from this document in a structured format.",
+    Dates:
+      "Extract all important dates mentioned in this document along with their context or events.",
+  };
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-        {/* Header */}
-        <Paper sx={{ px: 3, py: 2, borderRadius: 0 }} elevation={1}>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        onAnimationComplete={() => setIsAnimating(false)}
+      >
+        <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+          {/* HEADER */}
           <Box
             sx={{
+              px: 3,
+              py: 2,
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "center",
             }}
           >
-            <Box>
-              <Typography variant="h5" fontWeight="bold">
-                DocuChat
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Document Analysis Assistant
-              </Typography>
-            </Box>
-            <IconButton
-              onClick={() => setMode(mode === "dark" ? "light" : "dark")}
+            <Box
+              sx={{
+                px: 3,
+                py: 2,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
             >
-              {mode === "dark" ? <Brightness7 /> : <Brightness4 />}
-            </IconButton>
-          </Box>
-        </Paper>
-
-        {/* Messages */}
-        <Box sx={{ flex: 1, overflowY: "auto", py: 4 }}>
-          <Container maxWidth="md">
-            {messages.length === 0 ? (
-              <Box sx={{ textAlign: "center", mt: 15 }}>
-                <Typography variant="h3" fontWeight="bold" gutterBottom>
-                  Ask anything about your document
-                </Typography>
-                <Typography color="text.secondary">
-                  Upload a file and start analyzing instantly
-                </Typography>
-              </Box>
-            ) : (
-              messages.map((msg, i) => (
-                <Box
-                  key={i}
-                  sx={{
-                    mb: 3,
-                    display: "flex",
-                    justifyContent:
-                      msg.role === "user" ? "flex-end" : "flex-start",
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <IconButton
+                  onClick={() => {
+                    if (messages.length > 0) {
+                      const confirmLeave = window.confirm("Leave chat?");
+                      if (!confirmLeave) return;
+                    }
+                    setShowChat(false);
+                    setSessionId(null);
                   }}
                 >
-                  <Paper
-                    sx={{
-                      maxWidth: "75%",
-                      px: 3,
-                      py: 2,
-                      borderRadius: 3,
-                      ...(msg.role === "user" && {
-                        bgcolor: "primary.main",
-                        color: "white",
-                      }),
-                    }}
-                    elevation={msg.role === "user" ? 0 : 1}
-                  >
-                    <Typography>{msg.content}</Typography>
-                  </Paper>
-                </Box>
-              ))
-            )}
-            {loading && <Typography sx={{ mt: 1 }}>Thinking...</Typography>}
-            <div ref={messagesEndRef} />
-          </Container>
-        </Box>
-
-        {/* Input */}
-        <Paper sx={{ p: 2, borderRadius: 0 }} elevation={3}>
-          <Container maxWidth="md">
-            {file && (
-              <Chip
-                label={file.name}
-                icon={<AttachFile />}
-                onDelete={() => setFile(null)}
-                deleteIcon={<Close />}
-                sx={{ mb: 2 }}
-              />
-            )}
-            <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-              <input
-                type="file"
-                id="file-upload"
-                hidden
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-              />
-              <label htmlFor="file-upload">
-                <IconButton component="span">
-                  <AttachFile />
+                  <ArrowBackIcon />
                 </IconButton>
-              </label>
-              <TextField
-                fullWidth
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleSend()}
-                placeholder="Ask a question about your document..."
-                variant="outlined"
-                size="small"
-              />
-              <IconButton
-                onClick={handleSend}
-                disabled={loading}
-                color="primary"
+              </Box>
+              <Typography
+                fontWeight="bold"
                 sx={{
-                  bgcolor: "primary.main",
-                  color: "white",
-                  "&:hover": { bgcolor: "primary.dark" },
+                  position: "absolute",
+                  left: "50%",
+                  transform: "translateX(-50%)",
                 }}
               >
-                <Send />
-              </IconButton>
+                DocuChat
+              </Typography>
             </Box>
-          </Container>
-        </Paper>
-      </Box>
+
+            <IconButton
+              disableRipple
+              onClick={() => setMode(mode === "dark" ? "light" : "dark")}
+              sx={{
+                p: 1,
+                background: "transparent",
+                "&:hover": { background: "transparent" },
+              }}
+            >
+              {isDark ? <LightMode /> : <DarkMode />}
+            </IconButton>
+          </Box>
+
+          {/* MESSAGES */}
+          <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
+            <Container maxWidth="md">
+              {messages.length === 0 ? (
+                <Box textAlign="center" mt={10}>
+                  <Typography variant="h5">
+                    Ask anything about your document
+                  </Typography>
+
+                  <Box
+                    mt={3}
+                    display="flex"
+                    gap={1}
+                    flexWrap="wrap"
+                    justifyContent="center"
+                  >
+                    {Object.keys(promptMap).map((label) => (
+                      <Chip
+                        key={label}
+                        label={label}
+                        onClick={() => setInput(promptMap[label])}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              ) : (
+                <AnimatePresence>
+                  {messages.map((msg, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent:
+                            msg.role === "user" ? "flex-end" : "flex-start",
+                          mb: 2,
+                        }}
+                      >
+                        <Box sx={{ maxWidth: "75%", position: "relative" }}>
+                          <Paper sx={{ p: 2 }}>
+                            <Typography>{msg.content}</Typography>
+                          </Paper>
+
+                          {msg.role === "assistant" && (
+                            <IconButton
+                              size="small"
+                              onClick={() => copy(msg.content, i)}
+                              sx={{ position: "absolute", right: -36, top: 4 }}
+                            >
+                              <ContentCopy fontSize="small" />
+                            </IconButton>
+                          )}
+
+                          {copied === i && (
+                            <Typography fontSize={12}>Copied!</Typography>
+                          )}
+                        </Box>
+                      </Box>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              )}
+
+              {loading && <Typography>Thinking...</Typography>}
+
+              <div ref={messagesEndRef} />
+            </Container>
+          </Box>
+
+          {/* INPUT */}
+          <Box sx={{ p: 2 }}>
+            <Container maxWidth="md">
+              {file && (
+                <Chip
+                  label={file.name}
+                  onDelete={() => setFile(null)}
+                  deleteIcon={<Close />}
+                  icon={<AttachFile />}
+                  sx={{ mb: 1 }}
+                />
+              )}
+
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <input
+                  type="file"
+                  hidden
+                  id="file-upload"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                />
+
+                {/* <label htmlFor="file-upload">
+                  <IconButton component="span">
+                    <AttachFile />
+                  </IconButton>
+                </label> */}
+
+                <TextField
+                  fullWidth
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                />
+
+                <IconButton onClick={handleSend}>
+                  <Send />
+                </IconButton>
+              </Box>
+            </Container>
+          </Box>
+        </Box>
+      </motion.div>
     </ThemeProvider>
   );
 }

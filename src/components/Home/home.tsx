@@ -79,8 +79,23 @@ function Home({
   const [showChat, setShowChat] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [existingSession, setExistingSession] = useState<string | null>(null);
 
-  if (showChat && sessionId) return <DocumentChat sessionId={sessionId} />;
+  useEffect(() => {
+    const saved = localStorage.getItem("lastSessionId");
+    if (saved) {
+      setExistingSession(saved);
+    }
+  }, []);
+
+  if (showChat && sessionId)
+    return (
+      <DocumentChat
+        sessionId={sessionId}
+        setShowChat={setShowChat}
+        setSessionId={setSessionId}
+      />
+    );
 
   const isDark = mode === "dark";
 
@@ -326,11 +341,13 @@ function Home({
                 try {
                   const formData = new FormData();
                   const newSessionId = crypto.randomUUID();
-                  
+
                   // Get userId from localStorage
-                  const user = JSON.parse(localStorage.getItem("user") || "null");
+                  const user = JSON.parse(
+                    localStorage.getItem("user") || "null",
+                  );
                   const userId = user?._id;
-                  
+
                   if (!userId) {
                     setSnack({
                       open: true,
@@ -340,23 +357,23 @@ function Home({
                     setLoading(false);
                     return;
                   }
-                  
+
                   formData.append("sessionId", newSessionId);
                   formData.append("userId", userId);
                   formData.append("inputFile", primaryFile);
-                  
+
                   const res = await fetch("http://localhost:5000/jobs/upload", {
                     method: "POST",
                     body: formData,
                   });
-                  
+
                   if (res.ok) {
                     setSnack({
                       open: true,
                       message: "Upload successful",
                       severity: "success",
                     });
-                    
+
                     // Process the job
                     const processRes = await fetch(
                       `http://localhost:5000/jobs/process/${newSessionId}`,
@@ -368,12 +385,14 @@ function Home({
                         body: JSON.stringify({ userId }),
                       },
                     );
-                    
+
                     if (!processRes.ok) {
                       throw new Error("Processing failed");
                     }
-                    
+
                     await new Promise((r) => setTimeout(r, 5000));
+                    localStorage.setItem("lastSessionId", newSessionId);
+
                     setSessionId(newSessionId);
                     setShowChat(true);
                   } else {
@@ -388,7 +407,8 @@ function Home({
                   console.error("Upload error:", err);
                   setSnack({
                     open: true,
-                    message: err instanceof Error ? err.message : "Upload failed",
+                    message:
+                      err instanceof Error ? err.message : "Upload failed",
                     severity: "error",
                   });
                 } finally {
@@ -399,6 +419,31 @@ function Home({
               {loading ? "Processing…" : "Process Files →"}
             </Button>
           </Box>
+          {existingSession && (
+            <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+              <Button
+                variant="outlined"
+                sx={{
+                  px: 4,
+                  py: 1.2,
+                  borderRadius: "12px",
+                  textTransform: "none",
+                  borderColor: "rgba(14,165,233,0.4)",
+                  color: "#60c2f7",
+                  "&:hover": {
+                    borderColor: "#60c2f7",
+                    background: "rgba(14,165,233,0.08)",
+                  },
+                }}
+                onClick={() => {
+                  setSessionId(existingSession);
+                  setShowChat(true);
+                }}
+              >
+                Continue previous chat
+              </Button>
+            </Box>
+          )}
 
           {/* Trust row */}
           <Box
