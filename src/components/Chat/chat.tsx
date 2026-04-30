@@ -77,10 +77,10 @@ export default function DocumentChat({
     visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
   };
 
-  const messagesVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6, delay: 0.15 } },
-  };
+  // const messagesVariants = {
+  //   hidden: { opacity: 0, y: 20 },
+  //   visible: { opacity: 1, y: 0, transition: { duration: 0.6, delay: 0.15 } },
+  // };
 
   const inputVariants = {
     hidden: { opacity: 0, y: 16 },
@@ -232,8 +232,8 @@ export default function DocumentChat({
               </IconButton>
             </Box>
 
-          {/* MESSAGES */}
-          <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
+            {/* MESSAGES */}
+            <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
               <Container maxWidth="md">
                 {messages.length === 0 ? (
                   <Box textAlign="center" mt={10}>

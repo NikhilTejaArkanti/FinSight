@@ -86,7 +86,8 @@ function Home({
     if (saved) {
       setExistingSession(saved);
     }
-  }, []);
+    setExistingSession(saved);
+  }, [showChat]);
 
   if (showChat && sessionId)
     return (
@@ -260,7 +261,7 @@ function Home({
               textAlign: "center",
             }}
           >
-            Extract financial data{" "}
+            Ask anything about your{" "}
             <Box
               component="span"
               sx={{
@@ -270,7 +271,7 @@ function Home({
                 backgroundClip: "text",
               }}
             >
-              instantly
+              documents
             </Box>
           </Typography>
           <Typography
@@ -284,8 +285,9 @@ function Home({
               mb: 5,
             }}
           >
-            Upload your financial documents and let AI extract, clean, and
-            structure your data according to your desired format.
+            Upload a PDF and start chatting with it. AI understands your
+            document, finds relevant context, and gives precise answers in
+            seconds.
           </Typography>
         </motion.div>
 
@@ -390,8 +392,9 @@ function Home({
                       throw new Error("Processing failed");
                     }
 
-                    await new Promise((r) => setTimeout(r, 5000));
+                    await new Promise((r) => setTimeout(r, 2500));
                     localStorage.setItem("lastSessionId", newSessionId);
+                    setExistingSession(newSessionId);
 
                     setSessionId(newSessionId);
                     setShowChat(true);
