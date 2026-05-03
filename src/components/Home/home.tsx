@@ -407,7 +407,6 @@ function Home({
                     });
                   }
                 } catch (err) {
-                  console.error("Upload error:", err);
                   setSnack({
                     open: true,
                     message:

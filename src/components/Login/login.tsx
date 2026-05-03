@@ -37,41 +37,26 @@ const LoginPage = () => {
       try {
         const res = await fetch("http://localhost:5000/auth/google", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            access_token: tokenResponse.access_token,
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ access_token: tokenResponse.access_token }),
         });
 
+        const responseText = await res.text();
         if (!res.ok) {
-          throw new Error("Authentication failed");
+          throw new Error(`Auth failed: ${res.status} - ${responseText}`);
         }
 
-        const data = await res.json();
-        console.log("[LOGIN] Google auth response:", data);
-        console.log("[LOGIN] User object to store:", data.user);
+        const data = JSON.parse(responseText);
+        if (!data.user?._id) throw new Error("Invalid user data");
 
-        // Store user data
-        const userString = JSON.stringify(data.user);
-        console.log("[LOGIN] Storing user string:", userString);
-        localStorage.setItem("user", userString);
+        localStorage.setItem("user", JSON.stringify(data.user));
         localStorage.setItem("userId", data.user._id);
 
-        // Verify storage
-        const storedUser = localStorage.getItem("user");
-        console.log("[LOGIN] Verified stored user:", storedUser);
-        console.log("[LOGIN] About to navigate to /home");
-
-        // Navigate to home with userId
-        navigate(`/home`);
-        console.log("[LOGIN] Navigation called");
+        navigate("/home");
       } catch (err) {
-        console.error(err);
         setSnackbar({
           open: true,
-          message: "Login failed. Please try again.",
+          message: `Login failed: ${err instanceof Error ? err.message : "Unknown error"}`,
           severity: "error",
         });
       }

@@ -14,30 +14,23 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   let errorMessage = "";
 
   try {
-    console.log("[PROTECTED_ROUTE] Checking authentication...");
     const userData = localStorage.getItem("user");
-    console.log("[PROTECTED_ROUTE] Raw userData from storage:", userData);
 
     if (!userData) {
       errorMessage =
         "Session expired. User data not found. Please login again.";
-      console.log("[PROTECTED_ROUTE] No user data in storage");
     } else {
       user = JSON.parse(userData);
-      console.log("[PROTECTED_ROUTE] Parsed user object:", user);
-      console.log("[PROTECTED_ROUTE] User _id:", user?._id);
 
       if (!user || !user._id) {
         errorMessage =
           "Invalid user data. User ID is missing. Please login again.";
-        console.log("[PROTECTED_ROUTE] User or _id is missing");
       } else {
-        console.log("[PROTECTED_ROUTE] Authentication passed ✓");
+        console.log("User data loaded successfully:", user);
       }
     }
   } catch (err) {
     errorMessage = `Failed to parse user data: ${err instanceof Error ? err.message : "Unknown error"}`;
-    console.error("[PROTECTED_ROUTE] Error parsing user data:", err);
   }
 
   if (errorMessage) {
