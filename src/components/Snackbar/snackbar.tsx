@@ -1,4 +1,3 @@
-import React from "react";
 import { Snackbar, Alert } from "@mui/material";
 
 type Severity = "success" | "error" | "info" | "warning";
