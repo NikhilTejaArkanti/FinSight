@@ -35,11 +35,14 @@ const LoginPage = () => {
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       try {
-        const res = await fetch("http://localhost:5000/auth/google", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ access_token: tokenResponse.access_token }),
-        });
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/auth/google`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ access_token: tokenResponse.access_token }),
+          },
+        );
 
         const responseText = await res.text();
         if (!res.ok) {
